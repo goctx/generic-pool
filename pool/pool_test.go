@@ -2,7 +2,6 @@ package pool
 
 import (
 	"fmt"
-	"io"
 	"log"
 	"strconv"
 	"testing"
@@ -10,7 +9,8 @@ import (
 )
 
 type DemoCloser struct {
-	Name string
+	Name     string
+	activeAt time.Time
 }
 
 func (p *DemoCloser) Close() error {
@@ -18,8 +18,12 @@ func (p *DemoCloser) Close() error {
 	return nil
 }
 
+func (p *DemoCloser) GetActiveTime() time.Time {
+	return p.activeAt
+}
+
 func TestNewGenericPool(t *testing.T) {
-	_, err := NewGenericPool(0, 10, time.Minute*10, func() (io.Closer, error) {
+	_, err := NewGenericPool(0, 10, time.Minute*10, func() (Poolable, error) {
 		time.Sleep(time.Second)
 		return &DemoCloser{Name: "test"}, nil
 	})
@@ -29,7 +33,7 @@ func TestNewGenericPool(t *testing.T) {
 }
 
 func TestGenericPool_Acquire(t *testing.T) {
-	pool, err := NewGenericPool(0, 5, time.Minute*10, func() (io.Closer, error) {
+	pool, err := NewGenericPool(0, 5, time.Minute*10, func() (Poolable, error) {
 		time.Sleep(time.Second)
 		name := strconv.FormatInt(time.Now().Unix(), 10)
 		log.Printf("%s created", name)
@@ -50,7 +54,7 @@ func TestGenericPool_Acquire(t *testing.T) {
 }
 
 func TestGenericPool_Shutdown(t *testing.T) {
-	pool, err := NewGenericPool(0, 10, time.Minute*10, func() (io.Closer, error) {
+	pool, err := NewGenericPool(0, 10, time.Minute*10, func() (Poolable, error) {
 		time.Sleep(time.Second)
 		return &DemoCloser{Name: "test"}, nil
 	})

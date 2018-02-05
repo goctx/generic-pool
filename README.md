@@ -2,16 +2,25 @@
 
 golang通用连接池，管理所有实现了`Closer`接口的资源。
 
+## ChangeLog
+
++ 添加超时处理机制，需要实现`GetActiveTime`方法返回最新活跃时间
+
 ## Get Stated
 
 ```go
 type DemoCloser struct {
-	Name string
+	Name     string
+	activeAt time.Time
 }
 
 func (p *DemoCloser) Close() error {
 	fmt.Println(p.Name, "closed")
 	return nil
+}
+
+func (p *DemoCloser) GetActiveTime() time.Time {
+	return p.activeAt
 }
 // 创建连接池
 pool, err := NewGenericPool(0, 10, time.Minute*10, func() (io.Closer, error) {	   

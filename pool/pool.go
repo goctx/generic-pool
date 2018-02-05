@@ -12,18 +12,23 @@ var (
 	ErrPoolClosed    = errors.New("pool closed")
 )
 
-type factory func() (io.Closer, error)
+type Poolable interface {
+	io.Closer
+	GetActiveTime() time.Time
+}
+
+type factory func() (Poolable, error)
 
 type Pool interface {
-	Acquire() (io.Closer, error) // 获取资源
-	Release(io.Closer) error     // 释放资源
-	Close(io.Closer) error       // 关闭资源
-	Shutdown() error             // 关闭池
+	Acquire() (Poolable, error) // 获取资源
+	Release(Poolable) error     // 释放资源
+	Close(Poolable) error       // 关闭资源
+	Shutdown() error            // 关闭池
 }
 
 type GenericPool struct {
 	sync.Mutex
-	pool        chan io.Closer
+	pool        chan Poolable
 	maxOpen     int  // 池中最大资源数
 	numOpen     int  // 当前池中资源数
 	minOpen     int  // 池中最少资源数
@@ -41,7 +46,7 @@ func NewGenericPool(minOpen, maxOpen int, maxLifetime time.Duration, factory fac
 		minOpen:     minOpen,
 		maxLifetime: maxLifetime,
 		factory:     factory,
-		pool:        make(chan io.Closer, maxOpen),
+		pool:        make(chan Poolable, maxOpen),
 	}
 
 	for i := 0; i < minOpen; i++ {
@@ -55,7 +60,7 @@ func NewGenericPool(minOpen, maxOpen int, maxLifetime time.Duration, factory fac
 	return p, nil
 }
 
-func (p *GenericPool) Acquire() (io.Closer, error) {
+func (p *GenericPool) Acquire() (Poolable, error) {
 	if p.closed {
 		return nil, ErrPoolClosed
 	}
@@ -64,12 +69,16 @@ func (p *GenericPool) Acquire() (io.Closer, error) {
 		if err != nil {
 			return nil, err
 		}
-		// todo maxLifttime处理
+		// 如果设置了超时且当前连接的活跃时间+超时时间早于现在，则当前连接已过期
+		if p.maxLifetime > 0 && closer.GetActiveTime().Add(p.maxLifetime).Before(time.Now()) {
+			p.Close(closer)
+			continue
+		}
 		return closer, nil
 	}
 }
 
-func (p *GenericPool) getOrCreate() (io.Closer, error) {
+func (p *GenericPool) getOrCreate() (Poolable, error) {
 	select {
 	case closer := <-p.pool:
 		return closer, nil
@@ -93,7 +102,7 @@ func (p *GenericPool) getOrCreate() (io.Closer, error) {
 }
 
 // 释放单个资源到连接池
-func (p *GenericPool) Release(closer io.Closer) error {
+func (p *GenericPool) Release(closer Poolable) error {
 	if p.closed {
 		return ErrPoolClosed
 	}
@@ -104,7 +113,7 @@ func (p *GenericPool) Release(closer io.Closer) error {
 }
 
 // 关闭单个资源
-func (p *GenericPool) Close(closer io.Closer) error {
+func (p *GenericPool) Close(closer Poolable) error {
 	p.Lock()
 	closer.Close()
 	p.numOpen--
