@@ -70,7 +70,7 @@ func (p *GenericPool) Acquire() (Poolable, error) {
 			return nil, err
 		}
 		// 如果设置了超时且当前连接的活跃时间+超时时间早于现在，则当前连接已过期
-		if p.maxLifetime > 0 && closer.GetActiveTime().Add(p.maxLifetime).Before(time.Now()) {
+		if p.maxLifetime > 0 && closer.GetActiveTime().Add(time.Duration(p.maxLifetime)).Before(time.Now()) {
 			p.Close(closer)
 			continue
 		}

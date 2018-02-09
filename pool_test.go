@@ -37,7 +37,8 @@ func TestGenericPool_Acquire(t *testing.T) {
 		time.Sleep(time.Second)
 		name := strconv.FormatInt(time.Now().Unix(), 10)
 		log.Printf("%s created", name)
-		return &DemoCloser{Name: name}, nil
+		// TODO: FIXME &DemoCloser{Name: name}后，pool.Acquire陷入死循环
+		return &DemoCloser{Name: name, activeAt:time.Now()}, nil
 	})
 	if err != nil {
 		t.Error(err)
