@@ -1,5 +1,7 @@
 # Generic Pool
 
+[![Build Status](https://travis-ci.org/goctx/generic-pool.svg?branch=master)](https://travis-ci.org/goctx/generic-pool) ![](https://img.shields.io/github/issues/goctx/generic-pool.svg) ![](https://img.shields.io/github/stars/goctx/generic-pool.svg)
+
 golang通用连接池，管理所有实现了`Closer`接口的资源。
 
 ## Installation
@@ -12,7 +14,7 @@ $ go get github.com/goctx/generic-pool
 
 ```bash
 $ cd $GOPATH/src/github.com/goctx/generic-pool
-$ go test
+$ go test -v
 ```
 
 ## ChangeLog
